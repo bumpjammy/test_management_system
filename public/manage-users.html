@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User List</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+</head>
+<body>
+    <div hx-get="/api/get_users" hx-swap="innerHTML"></div>
+</body>
+</html>
