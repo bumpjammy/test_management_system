@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test List</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+
+    <style>
+        tr:hover td {
+            cursor: pointer;
+            background-color: #3A4046;
+            color: white;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center;">
+<!-- Container for centering header and content -->
+<div style="width: 50vw; display: flex; flex-direction: column; align-items: center;">
+    <!-- Header Section -->
+    <header style="display: flex; justify-content: space-between; width: 100%; padding-top: 15vh; box-sizing: border-box;">
+        <h1 style="margin: 0;">Test List</h1>
+    </header>
+
+    <!-- Content Section -->
+    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+        <div id="test-table" style="width: 100%;" hx-get="" hx-trigger="load" hx-swap="innerHTML">
+            Loading test data...
+        </div>
+    </div>
+</div>
+
+<script>
+    // Function to get URL query parameters
+    function getQueryParams() {
+        const params = {};
+        window.location.search.substring(1).split('&').forEach(function(part) {
+            const item = part.split('=');
+            params[item[0]] = decodeURIComponent(item[1]);
+        });
+        return params;
+    }
+
+    // Get the server_id from URL query parameters
+    const params = getQueryParams();
+    const serverId = params['server_id'];
+
+    // Update the hx-get attribute with the server_id
+    if (serverId) {
+        document.getElementById('test-table').setAttribute('hx-get', `/api/get_tests/${serverId}`);
+    } else {
+        document.getElementById('test-table').innerHTML = 'Server ID is missing from URL query parameters.';
+    }
+</script>
+</body>
+</html>

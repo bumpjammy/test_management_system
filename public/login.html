@@ -1,7 +1,26 @@
 <head>
-    <title>Hello, world!</title>
+    <title>Test Management Panel</title>
+    <link rel="stylesheet" href="stylesheet.css">
 </head>
 
 <body>
-    Hello, world!
+<div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+    <!-- Login/Register div -->
+    <div style="width: 400px;">
+        <!-- Inputs -->
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" style="width: 100%; margin-bottom: 15px;">
+
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" style="width: 100%; margin-bottom: 15px;">
+
+        <!-- Buttons -->
+        <div style="display:flex; justify-content: space-between">
+            <button style="width: 48%; height: 40px; justify-content: left" onclick="location.href='/dashboard'">Login</button>
+            <button style="width: 48%; height: 40px; justify-content: right" onclick="location.href='/dashboard'">Register</button>
+        </div>
+        <br/>
+        <p style="color: #ff0000">NOTE: Accounts are not yet implemented</p>
+    </div>
+</div>
 </body>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="stylesheet.css">
+</head>
+<body style="margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;">
+
+<div class="dashboard" style="max-width: 600px; margin: 0 auto;">
+    <!-- Title -->
+    <h1>Dashboard</h1>
+
+    <!-- Buttons -->
+    <button onclick="location.href='/server-list'">Server List</button>
+    <button onclick="location.href='/my-information'">My Information</button>
+    <button onclick="location.href='/schedule'">Schedule</button><br>
+
+    <!-- Manager only buttons - Access levels not yet implemented -->
+    <button class="manager-only" onclick="location.href='/manage-servers'">Manage Servers</button>
+    <button class="manager-only" onclick="location.href='/manage-users'">Manage Users</button>
+
+    <br>
+    <p style="color: red">Manager-only buttons in red</p>
+</div>
+
+</body>
+</html>

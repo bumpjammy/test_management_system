@@ -1,0 +1,176 @@
+body {
+    background-color: #212529;
+    color: #F8F9FA;
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #E9ECEF;
+    margin-bottom: 15px;
+}
+
+h1 {
+    font-size: 2.5rem;
+}
+
+h2 {
+    font-size: 2rem;
+}
+
+h3 {
+    font-size: 1.75rem;
+}
+
+h4 {
+    font-size: 1.5rem;
+}
+
+h5 {
+    font-size: 1.25rem;
+}
+
+h6 {
+    font-size: 1rem;
+}
+
+.button {
+    background-color: #495057;
+    color: #F8F9FA;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 1rem;
+}
+
+.button:hover {
+    background-color: #343A40;
+}
+
+a {
+    color: #DEE2E6;
+    text-decoration: none;
+    border-bottom: 2px solid #6C757D;
+    transition: color 0.3s ease, border-bottom-color 0.3s ease;
+}
+
+a:hover {
+    color: #ADB5BD;
+    border-bottom-color: #495057;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #495057;
+    border-radius: 8px;
+    background-color: #343A40;
+    margin-bottom: 15px;
+    font-size: 1rem;
+    color: #E9ECEF;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #6C757D;
+    background-color: #495057;
+}
+
+.card {
+    background-color: #343A40;
+    border: 1px solid #495057;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+.navbar {
+    background-color: #212529;
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+
+.navbar a {
+    color: #F8F9FA;
+    margin-right: 15px;
+    text-decoration: none;
+    font-size: 1rem;
+}
+
+.navbar a:hover {
+    color: #DEE2E6;
+}
+
+footer {
+    background-color: #343A40;
+    color: #DEE2E6;
+    text-align: center;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+footer a {
+    color: #ADB5BD;
+}
+
+footer a:hover {
+    color: #F8F9FA;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+th, td {
+    padding: 12px;
+    border: 1px solid #495057;
+    text-align: left;
+}
+
+th {
+    background-color: #495057;
+    color: #DEE2E6;
+}
+
+td {
+    background-color: #343A40;
+    color: #E9ECEF;
+}
+
+tr:nth-child(even) {
+    background-color: #212529;
+}
+
+img {
+    border-radius: 12px;
+    max-width: 100%;
+    height: auto;
+}
+
+.dashboard button {
+    width: 150px;
+    height: 80px;
+    margin: 10px;
+    display: inline-block;
+    font-size: 16px;
+    cursor: pointer;
+    border: 2px solid black;
+    background-color: lightgrey;
+}
+
+.manager-only {
+    border: 2px solid red !important;
+}

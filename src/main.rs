@@ -1,18 +1,33 @@
 mod my_vector;
 mod api;
 mod models;
+mod dynamic_pages;
 
 use std::path::PathBuf;
-use rocket::{get, routes, uri};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+use rocket::{get, routes, tokio, uri};
 use rocket::fs::NamedFile;
 use rocket::http::Status;
 use rocket::response::Redirect;
-
+use crate::api::{get_servers, get_test_data, get_tests, get_users};
+use crate::models::SiteData;
+use crate::my_vector::MyVector;
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
+
+    let user_list = MyVector::load_from_file("./data/users").await;
+    let server_list = MyVector::load_from_file("./data/servers").await;
+    let site_data = Arc::new(Mutex::new(SiteData {
+        users: user_list,
+        servers: server_list,
+    }));
+
     let _ = rocket::build() // Create a new webserver
-        .mount("/", routes![index, login, catch_all]) // Redirect a path to the correct function
+        .mount("/api", routes![get_users, get_servers, get_tests, get_test_data]) // All API calls
+        .mount("/", routes![index, login, catch_all]) // All public-facing pages
+        .manage(site_data) // Share the site data with the web-server, so that data can be shown to the user
         .launch() // Start the web server
         .await?;
 
