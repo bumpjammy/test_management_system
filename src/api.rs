@@ -101,7 +101,7 @@ pub async fn get_tests(site_data: &State<Arc<Mutex<SiteData>>>, server_id: Strin
         let test_id = test.get_id();
         let num_data_points = test.data.length;
 
-        let row_link = format!("/test-data?test_id={}", test_id);
+        let row_link = format!("/test-data?server_id={}&test_id={}", server_id, test_id);
         output.push_str(&format!(
             "<tr onclick=\"window.location.href='{}'\" style=\"cursor:pointer\">",
             row_link
