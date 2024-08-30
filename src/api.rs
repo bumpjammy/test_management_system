@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use rocket::{get, State};
 use rocket::response::content::RawHtml;
+use rocket::tokio::signal::unix::signal;
 use rocket::tokio::sync::Mutex;
 use crate::models::{SiteData, Test};
 
@@ -28,6 +29,15 @@ pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<Strin
 
 #[get("/get_servers")]
 pub async fn get_servers(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
+    get_server_table(site_data, "/test-list").await
+}
+
+#[get("/get_servers_manager")]
+pub async fn get_servers_manager(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
+    get_server_table(site_data, "/manage-server").await
+}
+
+async fn get_server_table(site_data: &State<Arc<Mutex<SiteData>>>, url_prefix: &str) -> RawHtml<String> {
     let site_data = site_data.lock().await;
     let servers = &site_data.servers;
     let mut output = String::new();
@@ -51,8 +61,9 @@ pub async fn get_servers(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<Str
 
         // Start the clickable row with an anchor tag
         output.push_str(&format!(
-            "<tr onclick=\"window.location.href='/test-list?server_id={}'\" style=\"cursor:pointer\">",
-            server.get_id()
+            "<tr onclick=\"window.location.href='{}?server_id={}'\" style=\"cursor:pointer\">",
+            url_prefix,
+            server.get_id(),
         ));
 
         // Add server data to the row
