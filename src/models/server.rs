@@ -17,7 +17,7 @@ impl Server {
             tests: MyVector::new(),
         }
     }
-    
+
     pub fn get_id(&self) -> String {
         self.id.clone()
     }
@@ -36,6 +36,48 @@ impl Server {
     
     pub fn get_cpu(&self) -> u32 {
         self.cpu
+    }
+
+    pub async fn set_id(&mut self, new_id: String) {
+        let old_path = format!("./data/tests/{}", self.id);
+        let new_path = format!("./data/tests/{}", new_id);
+
+        if Path::new(&old_path).exists() {
+            if !Path::new(&new_path).exists() {
+                fs::create_dir_all(&new_path).await.unwrap();
+            }
+
+            let mut entries = fs::read_dir(&old_path).await.unwrap();
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                let file_path = entry.path();
+                let file_name = file_path.file_name().unwrap();
+                let new_file_path = Path::new(&new_path).join(file_name);
+
+                // Move the file to the new directory
+                fs::rename(file_path, new_file_path).await.unwrap();
+            }
+
+            // Remove the old directory
+            fs::remove_dir_all(&old_path).await.unwrap();
+        }
+
+        self.id = new_id;
+    }
+
+    pub fn set_name(&mut self, name: String) {
+        self.name = name
+    }
+
+    pub fn set_created_by(&mut self, created_by: String) {
+        self.created_by = created_by
+    }
+
+    pub fn set_ram(&mut self, ram: u32) {
+        self.ram = ram
+    }
+
+    pub fn set_cpu(&mut self, cpu: u32) {
+        self.cpu = cpu
     }
     
     pub async fn load_tests(&mut self) {

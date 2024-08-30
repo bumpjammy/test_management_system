@@ -1,8 +1,13 @@
+use std::str::FromStr;
 use std::sync::Arc;
-use rocket::{get, State};
+use rocket::{get, post, FromForm, State};
+use rocket::form::Form;
+use rocket::http::hyper::Response;
+use rocket::http::Status;
 use rocket::response::content::RawHtml;
 use rocket::tokio::signal::unix::signal;
 use rocket::tokio::sync::Mutex;
+use rocket::yansi::Paint;
 use crate::models::{SiteData, Test};
 
 #[get("/get_users")]
@@ -82,6 +87,31 @@ async fn get_server_table(site_data: &State<Arc<Mutex<SiteData>>>, url_prefix: &
     output.push_str("</table>");
 
     RawHtml(output)
+}
+
+#[get("/get_server_info/<server_id>")]
+pub async fn get_server_info(site_data: &State<Arc<Mutex<SiteData>>>, server_id: String) -> String {
+    let site_data = site_data.lock().await;
+
+    let server_index = match site_data.servers.search(|a| a.get_id() == server_id).await {
+        Some(server) => server,
+        None => return "Server Not Found".to_string(),
+    };
+
+    let server = site_data.servers.get(server_index).await.unwrap();
+    let mut output = String::new();
+
+    output.push_str(server.get_id().as_str());
+    output.push_str(",");
+    output.push_str(server.get_name().as_str());
+    output.push_str(",");
+    output.push_str(server.get_created_by().as_str());
+    output.push_str(",");
+    output.push_str(server.get_ram().to_string().as_str());
+    output.push_str(",");
+    output.push_str(server.get_cpu().to_string().as_str());
+
+    output
 }
 
 #[get("/get_tests/<server_id>")]
@@ -184,7 +214,7 @@ pub async fn get_test(site_data: &Arc<Mutex<SiteData>>, server_id: String, test_
     let mut server = servers.get(server_index).await.expect("Server was found but was not in array!");
     server.load_tests().await;
 
-    let tests = server.tests;
+    let tests = &server.tests;
 
     let test_index = match tests.search(|a| a.get_id() == test_id).await {
         Some(test) => test,
@@ -192,4 +222,55 @@ pub async fn get_test(site_data: &Arc<Mutex<SiteData>>, server_id: String, test_
     };
 
     Some(tests.get(test_index).await.expect("Test was found but was not in array!"))
+}
+
+#[derive(FromForm)]
+struct ServerData {
+    old_id: String,
+    id: String,
+    name: String,
+    created_by: String,
+    ram: String,
+    cpu: String,
+}
+
+#[post("/update_server", data = "<form_data>")]
+pub async fn update_server(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<ServerData>
+) -> Status {
+    let site_data = site_data.lock().await;
+
+    let server_index = match site_data.servers.search(|a| a.get_id() == form_data.old_id).await {
+        Some(server_index) => server_index,
+        None => return Status::NotFound
+    };
+    let server = site_data.servers.get_mut(server_index).await.unwrap();
+
+    println!("{}", form_data.ram);
+    let ram = match u32::from_str(form_data.ram.as_str()) {
+        Ok(ram) => ram,
+        Err(_) => return Status::UnprocessableEntity,
+    };
+    println!("{}", form_data.cpu);
+    let cpu = match u32::from_str(form_data.cpu.as_str()) {
+        Ok(cpu) => cpu,
+        Err(_) => return Status::UnprocessableEntity,
+    };
+
+    server.set_id(form_data.id.clone()).await;
+    server.set_name(form_data.name.clone());
+    server.set_created_by(form_data.created_by.clone());
+    server.set_ram(ram);
+    server.set_cpu(cpu);
+
+    println!("Saving");
+    site_data.servers.save_to_file("./data/servers").await.expect("Failed to save servers!");
+    for i in 0..site_data.servers.length {
+        let server = site_data.servers.get(i).await.unwrap();
+        println!("{}", server.get_id());
+    }
+    println!("Saved!");
+
+    Status::Ok
 }

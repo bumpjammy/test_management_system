@@ -171,7 +171,7 @@ where
         }
     }
 
-    // Get element at some index in an array
+    // Get the value as a Clone
     pub async fn get(&self, index: u32) -> Option<T> { // Returns optional, as element may not exist
         let ptr = self.slice.get_pointer();
         let element_ptr = unsafe { ptr.add(index as usize) };
@@ -189,6 +189,28 @@ where
             }
 
             value
+        }
+    }
+
+    // Get element at some index in an array as a mutable reference
+    pub async fn get_mut(&self, index: u32) -> Option<&mut T> { // Returns optional, as element may not exist
+
+        if index > self.length {
+            return None;
+        }
+
+        let ptr = self.slice.get_pointer();
+        let element_ptr = unsafe { ptr.add(index as usize) };
+
+        // Safe read of the element
+        unsafe {
+            let value = if !element_ptr.is_null() {
+                ptr
+            } else {
+                return None;
+            };
+
+            Some(&mut *value)
         }
     }
 
@@ -752,7 +774,7 @@ mod tests {
         let mut vec = MyVector::new_with_capacity(5);
         vec.push(10).await;
         vec.push(20).await;
-        vec.push(30);
+        vec.push(30).await;
 
         let file_path = "test_vector.txt";
 
