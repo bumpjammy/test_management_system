@@ -23,7 +23,10 @@
 
     <!-- Form Section -->
     <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
-        <form id="server-form" style="width: 100%;" hx-post="/api/update_server" hx-trigger="submit" hx-swap="innerHTML">
+        <form id="server-form" style="width: 100%;"
+              hx-post="/api/update_server"
+              hx-trigger="submit"
+              hx-swap="innerHTML">
             <input type="hidden" id="old_id" name="old_id">
             <div style="margin-bottom: 10px;">
                 <label for="id">ID:</label>
@@ -95,21 +98,27 @@
             if (confirm(`Are you sure you want to delete server with ID: ${serverId}?`)) {
                 fetch(`/api/delete_server?server_id=${serverId}`, {
                     method: 'DELETE'
-                }).then(response => response.json())
-                    .then(data => {
+                }).then(response => {
+                    if (response.status === 200) {
                         alert('Server deleted successfully.');
-                        // Optionally, redirect or clear the form
-                        window.location.href = '/'; // Redirect to home page or another page
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        alert('An error occurred while deleting the server.');
-                    });
+                        window.location.href = '/manage-servers'; // Redirect to manage servers page
+                    } else {
+                        alert('An error occurred while deleting the server. Please try again.');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the server.');
+                });
             }
         });
     } else {
         alert('Server ID is missing from URL query parameters.');
     }
+
+    // Handle form submission redirection
+    document.getElementById('server-form').addEventListener('htmx:afterRequest', function(event) {
+        window.location.href = '/manage-servers';
+    });
 </script>
 </body>
 </html>

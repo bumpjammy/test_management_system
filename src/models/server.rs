@@ -104,6 +104,16 @@ impl Server {
         
         self.tests = tests;
     }
+
+    pub async fn delete_tests_directory(&self) {
+        let path = format!("./data/tests/{}", self.id);
+
+        if Path::new(&path).exists() {
+            if let Err(e) = fs::remove_dir_all(&path).await {
+                eprintln!("Failed to delete directory {}: {}", path, e);
+            }
+        }
+    }
 }
 
 impl Display for Server {

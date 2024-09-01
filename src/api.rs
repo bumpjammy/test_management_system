@@ -1,6 +1,7 @@
+use std::fmt::format;
 use std::str::FromStr;
 use std::sync::Arc;
-use rocket::{get, post, FromForm, State};
+use rocket::{delete, get, post, FromForm, State};
 use rocket::form::Form;
 use rocket::http::hyper::Response;
 use rocket::http::Status;
@@ -8,7 +9,7 @@ use rocket::response::content::RawHtml;
 use rocket::tokio::signal::unix::signal;
 use rocket::tokio::sync::Mutex;
 use rocket::yansi::Paint;
-use crate::models::{SiteData, Test};
+use crate::models::{Server, SiteData, Test};
 
 #[get("/get_users")]
 pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
@@ -225,8 +226,17 @@ pub async fn get_test(site_data: &Arc<Mutex<SiteData>>, server_id: String, test_
 }
 
 #[derive(FromForm)]
-struct ServerData {
+struct UpdateServerData {
     old_id: String,
+    id: String,
+    name: String,
+    created_by: String,
+    ram: String,
+    cpu: String,
+}
+
+#[derive(FromForm)]
+struct CreateServerData {
     id: String,
     name: String,
     created_by: String,
@@ -237,7 +247,7 @@ struct ServerData {
 #[post("/update_server", data = "<form_data>")]
 pub async fn update_server(
     site_data: &State<Arc<Mutex<SiteData>>>,
-    form_data: Form<ServerData>
+    form_data: Form<UpdateServerData>
 ) -> Status {
     let site_data = site_data.lock().await;
 
@@ -272,5 +282,49 @@ pub async fn update_server(
     }
     println!("Saved!");
 
+    Status::Ok
+}
+
+#[delete("/delete_server?<server_id>")]
+pub async fn delete_server(site_data: &State<Arc<Mutex<SiteData>>>, server_id: String) -> Status {
+    let mut site_data = site_data.lock().await;
+
+    let server_index = match site_data.servers.search(|a| a.get_id() == server_id).await {
+        Some(server_index) => server_index,
+        None => return Status::NotFound,
+    };
+    
+    let server = site_data.servers.get(server_index).await.unwrap();
+    server.delete_tests_directory().await;
+
+    site_data.servers.remove(server_index).await;
+    site_data.servers.save_to_file("./data/servers").await.expect("Failed to save servers!");
+    Status::Ok
+}
+
+#[post("/create_server", data = "<form_data>")]
+pub async fn create_server(site_data: &State<Arc<Mutex<SiteData>>>, form_data: Form<CreateServerData>) -> Status {
+    let mut site_data = site_data.lock().await;
+    
+    let ram = match u32::from_str(form_data.ram.as_str()) {
+        Ok(ram) => ram,
+        Err(_) => return Status::UnprocessableEntity,
+    };
+    let cpu = match u32::from_str(form_data.cpu.as_str()) {
+        Ok(cpu) => cpu,
+        Err(_) => return Status::UnprocessableEntity,
+    };
+    
+    let server = Server::new(
+        form_data.id.clone(),
+        form_data.name.clone(),
+        form_data.created_by.clone(), 
+        ram.clone(),
+        cpu.clone(),
+    );
+    
+    site_data.servers.push(server).await;
+    site_data.servers.save_to_file("./data/servers").await.expect("Failed to save servers!");
+    
     Status::Ok
 }

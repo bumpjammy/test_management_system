@@ -1,1 +1,2 @@
-test_server_two,Test Server,test_user1,4000,8
+test_server_one,Test Server,test_user1,8000,4
+new_server,New Server,me,1,1
