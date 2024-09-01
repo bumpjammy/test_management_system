@@ -9,15 +9,23 @@ use rocket::{get, routes, tokio, uri};
 use rocket::fs::NamedFile;
 use rocket::http::Status;
 use rocket::response::Redirect;
-use crate::api::{create_server, delete_server, get_server_info, get_servers, get_servers_manager, get_test_data, get_tests, get_users, update_server};
+use crate::api::{create_server, create_user, delete_server, delete_user, get_server_info, get_servers, get_servers_manager, get_test_data, get_tests, get_user_info, get_users, update_server, update_user};
 use crate::models::SiteData;
 use crate::my_vector::MyVector;
 
 #[rocket::main]
 async fn main() -> Result<(), rocket::Error> {
 
-    let user_list = MyVector::load_from_file("./data/users").await;
-    let server_list = MyVector::load_from_file("./data/servers").await;
+    let mut user_list = MyVector::load_from_file("./data/users").await; // Load users
+    
+    user_list.quick_sort().await;
+    user_list.save_to_file("./data/users").await.expect("Cannot save users!"); // Ensure users are sorted on start
+    
+    let mut server_list = MyVector::load_from_file("./data/servers").await; // Load servers 
+    
+    server_list.quick_sort().await;
+    server_list.save_to_file("./data/servers").await.expect("Cannot save servers!"); // Ensure servers are sorted on start
+    
     let site_data = Arc::new(Mutex::new(SiteData {
         users: user_list,
         servers: server_list,
@@ -29,7 +37,9 @@ async fn main() -> Result<(), rocket::Error> {
             get_servers_manager, get_tests,
             get_test_data, get_server_info,
             update_server, delete_server,
-            create_server,
+            create_server, update_user,
+            get_user_info, delete_user,
+            create_user,
         ]) // All API calls
         .mount("/", routes![index, login, catch_all]) // All public-facing pages
         .manage(site_data) // Share the site data with the web-server, so that data can be shown to the user

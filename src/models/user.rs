@@ -5,11 +5,11 @@ use crate::models::{Position, User};
 use crate::my_vector::SafePointer;
 
 impl User {
-    pub fn new(username: String, position: Position) -> Self {
+    pub fn new(username: String, forename: Option<String>, surname: Option<String>, position: Position) -> Self {
         Self { // Constructs a new instance of self
             username,
-            forename: None, // Default no name
-            surname: None,
+            forename,
+            surname,
             position
         }
     }
@@ -28,6 +28,22 @@ impl User {
     
     pub fn get_position(&self) -> Position {
         self.position.clone()
+    }
+
+    pub fn set_username(&mut self, username: String) {
+        self.username = username
+    }
+
+    pub fn set_forename(&mut self, forename: Option<String>) {
+        self.forename = forename
+    }
+
+    pub fn set_surname(&mut self, surname: Option<String>) {
+        self.surname = surname
+    }
+
+    pub fn set_position(&mut self, position: Position) {
+        self.position = position;
     }
 }
 

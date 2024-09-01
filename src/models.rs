@@ -5,6 +5,7 @@ mod data_point;
 mod schedule_entry;
 
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 use crate::my_vector::MyVector;
 
 pub struct SiteData { // Used to package all site data together for ease of use
@@ -33,7 +34,16 @@ impl Display for Position { // Allows to_string to be ran
             Position::Manager => write!(f, "{}", "Manager")
         }
     }
+}
 
+impl FromStr for Position {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s { 
+            "Manager" => Ok(Self::Manager),
+            _ => Ok(Self::Developer),
+        }
+    }
 }
 
 #[derive(Clone)]

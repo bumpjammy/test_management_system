@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Form</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <style>
+        tr:hover td {
+            cursor: pointer;
+            background-color: #3A4046;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center;">
+<!-- Container for centering header and form -->
+<div style="width: 50vw; display: flex; flex-direction: column; align-items: center;">
+
+    <!-- Header Section -->
+    <header style="display: flex; justify-content: space-between; width: 100%; padding-top: 15vh; box-sizing: border-box;">
+        <h1 id="header-title" style="margin: 0;">Update User</h1>
+    </header>
+
+    <!-- Form Section -->
+    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+        <form id="user-form" style="width: 100%;"
+              hx-post="/api/update_user"
+              hx-trigger="submit"
+              hx-swap="innerHTML">
+            <input type="hidden" id="old_username" name="old_username">
+            <div style="margin-bottom: 10px;">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="forename">Forename:</label>
+                <input type="text" id="forename" name="forename">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="surname">Surname:</label>
+                <input type="text" id="surname" name="surname">
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="position">Position:</label>
+                <select id="position" name="position" required>
+                    <option value="Developer">Developer</option>
+                    <option value="Manager">Manager</option>
+                </select>
+            </div>
+            <button type="submit" style="padding: 10px; background-color: #007bff; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Save</button>
+            <button type="button" id="delete-button" style="padding: 10px; background-color: #ff7b00; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Delete</button>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    // Function to get URL query parameters
+    function getQueryParams() {
+        const params = {};
+        window.location.search.substring(1).split('&').forEach(function(part) {
+            const item = part.split('=');
+            params[item[0]] = decodeURIComponent(item[1]);
+        });
+        return params;
+    }
+
+    // Get the username from URL query parameters
+    const params = getQueryParams();
+    const username = params['username'];
+
+    // Function to fetch user info and populate the form
+    function populateForm(username) {
+        fetch(`/api/get_user_info/${username}`)
+            .then(response => response.text())
+            .then(data => {
+                const [uname, forename, surname, position] = data.split(',');
+                document.getElementById('old_username').value = uname;
+                document.getElementById('username').value = uname;
+                document.getElementById('forename').value = forename || '';
+                document.getElementById('surname').value = surname || '';
+                document.getElementById('position').value = position || 'Developer';
+            })
+            .catch(error => {
+                console.error('Error fetching user info:', error);
+                alert('Error fetching user information.');
+            });
+    }
+
+    // Set up the form and delete button
+    if (username) {
+        populateForm(username);
+        document.getElementById('header-title').innerText = `User Form (Username: ${username})`;
+
+        document.getElementById('delete-button').addEventListener('click', function() {
+            if (confirm(`Are you sure you want to delete user with Username: ${username}?`)) {
+                fetch(`/api/delete_user?username=${username}`, {
+                    method: 'DELETE'
+                }).then(response => {
+                    if (response.status === 200) {
+                        alert('User deleted successfully.');
+                        window.location.href = '/manage-users'; // Redirect to manage users page
+                    } else {
+                        alert('An error occurred while deleting the user. Please try again.');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the user.');
+                });
+            }
+        });
+    } else {
+        alert('Username is missing from URL query parameters.');
+    }
+
+    // Handle form submission redirection
+    document.getElementById('user-form').addEventListener('htmx:afterRequest', function(event) {
+        window.location.href = '/manage-users';
+    });
+</script>
+</body>
+</html>

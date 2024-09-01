@@ -1,15 +1,11 @@
-use std::fmt::format;
 use std::str::FromStr;
 use std::sync::Arc;
 use rocket::{delete, get, post, FromForm, State};
 use rocket::form::Form;
-use rocket::http::hyper::Response;
 use rocket::http::Status;
 use rocket::response::content::RawHtml;
-use rocket::tokio::signal::unix::signal;
 use rocket::tokio::sync::Mutex;
-use rocket::yansi::Paint;
-use crate::models::{Server, SiteData, Test};
+use crate::models::{Position, Server, SiteData, Test, User};
 
 #[get("/get_users")]
 pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
@@ -17,16 +13,29 @@ pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<Strin
 
     let mut output = String::new();
     output.push_str("<table>");
-    output.push_str("<tr><th>username</th><th>forename</th><th>surname</th><th>position</th></tr>\n");
+    output.push_str("<tr><th>Username</th><th>Forename</th><th>Surname</th><th>Position</th></tr>\n");
 
     for i in 0..site_data.users.length {
         let user = site_data.users.get(i).await.unwrap();
+        let username = user.get_username();
 
+        // Start the clickable row with an anchor tag
         output.push_str(&format!(
-            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\n",
-            user.get_username(), user.get_forename().unwrap_or_default(), user.get_surname().unwrap_or_default(), user.get_position()
+            "<tr onclick=\"window.location.href='/manage_user?username={}'\" style=\"cursor:pointer\">",
+            username
         ));
-        
+
+        // Add user data to the row
+        output.push_str(&format!(
+            "<td>{}</td><td>{}</td><td>{}</td><td>{}</td>",
+            username,
+            user.get_forename().unwrap_or_default(),
+            user.get_surname().unwrap_or_default(),
+            user.get_position()
+        ));
+
+        // Close the row
+        output.push_str("</tr>\n");
     }
     output.push_str("</table>");
 
@@ -111,6 +120,29 @@ pub async fn get_server_info(site_data: &State<Arc<Mutex<SiteData>>>, server_id:
     output.push_str(server.get_ram().to_string().as_str());
     output.push_str(",");
     output.push_str(server.get_cpu().to_string().as_str());
+
+    output
+}
+
+#[get("/get_user_info/<username>")]
+pub async fn get_user_info(site_data: &State<Arc<Mutex<SiteData>>>, username: String) -> String {
+    let site_data = site_data.lock().await;
+
+    let user_index = match site_data.users.search(|a| a.get_username() == username).await {
+        Some(username_index) => username_index,
+        None => return "User Not Found".to_string(),
+    };
+
+    let user = site_data.users.get(user_index).await.unwrap();
+    let mut output = String::new();
+
+    output.push_str(user.get_username().as_str());
+    output.push_str(",");
+    output.push_str(user.get_forename().unwrap_or_default().as_str());
+    output.push_str(",");
+    output.push_str(user.get_surname().unwrap_or_default().as_str());
+    output.push_str(",");
+    output.push_str(user.get_position().to_string().as_str());
 
     output
 }
@@ -257,12 +289,10 @@ pub async fn update_server(
     };
     let server = site_data.servers.get_mut(server_index).await.unwrap();
 
-    println!("{}", form_data.ram);
     let ram = match u32::from_str(form_data.ram.as_str()) {
         Ok(ram) => ram,
         Err(_) => return Status::UnprocessableEntity,
     };
-    println!("{}", form_data.cpu);
     let cpu = match u32::from_str(form_data.cpu.as_str()) {
         Ok(cpu) => cpu,
         Err(_) => return Status::UnprocessableEntity,
@@ -274,14 +304,7 @@ pub async fn update_server(
     server.set_ram(ram);
     server.set_cpu(cpu);
 
-    println!("Saving");
     site_data.servers.save_to_file("./data/servers").await.expect("Failed to save servers!");
-    for i in 0..site_data.servers.length {
-        let server = site_data.servers.get(i).await.unwrap();
-        println!("{}", server.get_id());
-    }
-    println!("Saved!");
-
     Status::Ok
 }
 
@@ -299,6 +322,21 @@ pub async fn delete_server(site_data: &State<Arc<Mutex<SiteData>>>, server_id: S
 
     site_data.servers.remove(server_index).await;
     site_data.servers.save_to_file("./data/servers").await.expect("Failed to save servers!");
+    Status::Ok
+}
+
+#[delete("/delete_user?<username>")]
+pub async fn delete_user(site_data: &State<Arc<Mutex<SiteData>>>, username: String) -> Status {
+    let mut site_data = site_data.lock().await;
+
+    let user_index = match site_data.users.search(|a| a.get_username() == username).await {
+        Some(user_index) => user_index,
+        None => return Status::NotFound,
+    };
+
+    let user = site_data.users.get(user_index).await.unwrap();
+    site_data.users.remove(user_index).await;
+    site_data.users.save_to_file("./data/users").await.expect("Failed to save users!");
     Status::Ok
 }
 
@@ -326,5 +364,83 @@ pub async fn create_server(site_data: &State<Arc<Mutex<SiteData>>>, form_data: F
     site_data.servers.push(server).await;
     site_data.servers.save_to_file("./data/servers").await.expect("Failed to save servers!");
     
+    Status::Ok
+}
+
+#[post("/create_user", data = "<form_data>")]
+pub async fn create_user(site_data: &State<Arc<Mutex<SiteData>>>, form_data: Form<CreateUserData>) -> Status {
+    let mut site_data = site_data.lock().await;
+
+    let forename = match form_data.forename.is_empty() {
+        false => Some(form_data.forename.clone()),
+        true => None,
+    };
+
+    let surname = match form_data.surname.is_empty() {
+        false => Some(form_data.surname.clone()),
+        true => None,
+    };
+
+    let position = Position::from_str(form_data.position.as_str()).unwrap();
+
+    let user = User::new(
+        form_data.username.clone(),
+        forename,
+        surname,
+        position,
+    );
+
+    site_data.users.push(user).await;
+
+    Status::Ok
+}
+
+#[derive(FromForm)]
+struct UpdateUserData {
+    old_username: String,
+    username: String,
+    forename: String,
+    surname: String,
+    position: String,
+}
+
+#[derive(FromForm)]
+struct CreateUserData {
+    username: String,
+    forename: String,
+    surname: String,
+    position: String,
+}
+
+
+#[post("/update_user", data = "<form_data>")]
+pub async fn update_user(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<UpdateUserData>
+) -> Status {
+    let site_data = site_data.lock().await;
+
+    let user_index = match site_data.users.search(|user| user.get_username() == form_data.old_username).await {
+        Some(user_index) => user_index,
+        None => return Status::NotFound,
+    };
+    let user = site_data.users.get_mut(user_index).await.unwrap();
+
+    user.set_username(form_data.username.clone());
+
+    user.set_forename(match form_data.forename.is_empty() {
+        true => None,
+        false => Some(form_data.forename.clone())
+    });
+
+    user.set_surname(match form_data.surname.is_empty() {
+        true => None,
+        false => Some(form_data.surname.clone())
+    });
+
+    user.set_position(Position::from_str(form_data.position.as_str()).unwrap());
+
+    // Save updated user data to a file
+    site_data.users.save_to_file("./data/users").await.expect("Failed to save users!");
     Status::Ok
 }
