@@ -234,7 +234,6 @@ pub async fn get_test_data(
     RawHtml(output)
 }
 
-
 pub async fn get_test(site_data: &Arc<Mutex<SiteData>>, server_id: String, test_id: String) -> Option<Test> {
     let site_data = site_data.lock().await;
     let servers = &site_data.servers;
@@ -274,6 +273,66 @@ struct CreateServerData {
     created_by: String,
     ram: String,
     cpu: String,
+}
+
+#[derive(FromForm)]
+struct UpdateTestData {
+    server_id: String,
+    old_id: String,
+    id: String,
+}
+
+#[derive(FromForm)]
+struct CreateTestData {
+    server_id: String,
+    id: String,
+}
+
+#[post("/update_test", data = "<form_data>")]
+pub async fn update_test(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<UpdateTestData>,
+) -> Status {
+    let site_data = site_data.lock().await;
+
+    let server_index = match site_data.servers.search(|a| a.get_id() == form_data.server_id).await {
+        Some(server_index) => server_index,
+        None => return Status::NotFound,
+    };
+    let server = site_data.servers.get_mut(server_index).await.unwrap();
+    server.load_tests().await;
+
+    let test_index = match server.tests.search(|a| a.get_id() == form_data.old_id).await {
+        Some(test_index) => test_index,
+        None => return Status::NotFound,
+    };
+    let test = server.tests.get_mut(test_index).await.unwrap();
+
+    test.set_id(form_data.id.clone());
+
+    Status::Ok
+}
+
+#[post("/create_test", data = "<form_data>")]
+pub async fn create_test(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<CreateTestData>,
+) -> Status {
+    let site_data = site_data.lock().await;
+
+    let server_index = match site_data.servers.search(|a| a.get_id()  == form_data.server_id).await {
+        Some(server_index) => server_index,
+        None => return Status::NotFound,
+    };
+    let server = site_data.servers.get_mut(server_index).await.unwrap();
+
+    let test = Test::new(form_data.id.clone());
+    println!("{}", format!("./tests/{}/{}", server.get_id(), test.get_id()).as_str());
+    test.data.save_to_file(format!("./data/tests/{}/{}", server.get_id(), test.get_id()).as_str()).await.unwrap();
+    server.load_tests().await;
+    println!("{}", test);
+
+    Status::Ok
 }
 
 #[post("/update_server", data = "<form_data>")]

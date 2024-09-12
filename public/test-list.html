@@ -28,6 +28,15 @@
             Loading test data...
         </div>
     </div>
+
+    <!-- Button Section -->
+    <div style="display: flex; justify-content: left; align-items: flex-start; width: 100%;">
+        <a id="create-test-button" href="#" style="border-bottom: none">
+            <button style="padding: 10px; background-color: #007bff; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">
+                Add Test
+            </button>
+        </a>
+    </div>
 </div>
 
 <script>
@@ -48,8 +57,9 @@
     // Update the hx-get attribute with the server_id
     if (serverId) {
         document.getElementById('test-table').setAttribute('hx-get', `/api/get_tests/${serverId}`);
-        // Update the h1 tag text
         document.getElementById('header-title').innerText = `Test List (${serverId})`;
+        // Set the Add Test button href to include server_id
+        document.getElementById('create-test-button').href = `/create-test?server_id=${serverId}`;
     } else {
         document.getElementById('test-table').innerHTML = 'Server ID is missing from URL query parameters.';
     }

@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io;
@@ -7,7 +6,6 @@ use std::io::BufRead;
 use std::path::Path;
 use std::str::FromStr;
 use rocket::tokio::runtime::Runtime;
-use rocket::yansi::Paint;
 use crate::models::{DataPoint, Test};
 use crate::my_vector::{MyVector, SafePointer};
 
@@ -21,6 +19,10 @@ impl Test {
     
     pub fn get_id(&self) -> String {
         self.id.clone()
+    }
+
+    pub fn set_id(&mut self, id: String) {
+        self.id = id;
     }
 }
 

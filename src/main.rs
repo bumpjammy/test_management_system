@@ -9,7 +9,7 @@ use rocket::{get, routes, tokio, uri};
 use rocket::fs::NamedFile;
 use rocket::http::Status;
 use rocket::response::Redirect;
-use crate::api::{create_server, create_user, delete_server, delete_user, get_server_info, get_servers, get_servers_manager, get_test_data, get_tests, get_user_info, get_users, update_server, update_user};
+use crate::api::{create_server, create_user, create_test, delete_server, delete_user, get_server_info, get_servers, get_servers_manager, get_test_data, get_tests, get_user_info, get_users, update_server, update_user, update_test};
 use crate::models::SiteData;
 use crate::my_vector::MyVector;
 
@@ -39,7 +39,8 @@ async fn main() -> Result<(), rocket::Error> {
             update_server, delete_server,
             create_server, update_user,
             get_user_info, delete_user,
-            create_user,
+            create_user, update_test,
+            create_test,
         ]) // All API calls
         .mount("/", routes![index, login, catch_all]) // All public-facing pages
         .manage(site_data) // Share the site data with the web-server, so that data can be shown to the user
