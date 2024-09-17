@@ -381,15 +381,15 @@ where
 
         let mut file = File::create(&path).await?; // Ensure the file is mutable
 
-        for i in 0..self.length {
-            let element_str = match self.get(i).await {
-                Some(value) => value,
+        for i in 0..self.length { // Loop through elements of the vector
+            let element_str = match self.get(i).await { // Get element
+                Some(value) => value, // Should succeed, since we are looping through the array
                 None => {
-                    eprintln!("Failed to save vector to file!");
+                    eprintln!("Failed to save vector to file!"); // Something has gone horribly wrong
                     panic!();
                 }
-            }.to_string();
-            match file.write(format!("{}{}", element_str, "\n").as_bytes()).await {
+            }.to_string(); // Convert the element to a string to write to file
+            match file.write(format!("{}{}", element_str, "\n").as_bytes()).await { // Write to the file
                 Ok(_) => {},
                 Err(e) => {
                     eprintln!("Failed to save vector to file!");
