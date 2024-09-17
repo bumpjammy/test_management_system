@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create DataPoint</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <style>
+        tr:hover td {
+            cursor: pointer;
+            background-color: #3A4046;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center;">
+<!-- Container for centering header and form -->
+<div style="width: 50vw; display: flex; flex-direction: column; align-items: center;">
+
+    <!-- Header Section -->
+    <header style="display: flex; justify-content: space-between; width: 100%; padding-top: 15vh; box-sizing: border-box;">
+        <h1 id="header-title" style="margin: 0;">Create DataPoint</h1>
+    </header>
+
+    <!-- Form Section -->
+    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+        <form id="datapoint-form" style="width: 100%;"
+              hx-post="/api/create_datapoint"
+              hx-trigger="submit"
+              hx-swap="innerHTML">
+            <input type="hidden" id="server_id" name="server_id">
+            <input type="hidden" id="test_id" name="test_id">
+            <div style="margin-bottom: 10px;">
+                <label for="time">Time:</label>
+                <input type="text" id="time" name="time" required>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="ram">RAM (MB):</label>
+                <input type="number" id="ram" name="ram" required>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="cpu">CPU (%):</label>
+                <input type="number" id="cpu" name="cpu" required>
+            </div>
+            <div style="margin-bottom: 10px;">
+                <label for="comment">Comment:</label>
+                <input type="text" id="comment" name="comment">
+            </div>
+            <button type="submit" style="padding: 10px; background-color: #007bff; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Create</button>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    // Function to get URL query parameters
+    function getQueryParams() {
+        const params = {};
+        window.location.search.substring(1).split('&').forEach(function(part) {
+            const item = part.split('=');
+            params[item[0]] = decodeURIComponent(item[1]);
+        });
+        return params;
+    }
+
+    // Get the server_id and test_id from URL query parameters
+    const params = getQueryParams();
+    const serverId = params['server_id'];
+    const testId = params['test_id'];
+
+    // Set up the form
+    if (serverId && testId) {
+        document.getElementById('server_id').value = serverId;
+        document.getElementById('test_id').value = testId;
+        document.getElementById('header-title').innerText = `Create DataPoint for Test (${testId}) on Server (${serverId})`;
+    } else {
+        alert('Server ID or Test ID is missing from URL query parameters.');
+    }
+
+    // Handle form submission redirection
+    document.getElementById('datapoint-form').addEventListener('htmx:afterRequest', function(event) {
+        window.location.href = `/test-data?server_id=${serverId}&test_id=${testId}`;
+    });
+</script>
+</body>
+</html>

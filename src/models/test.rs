@@ -22,6 +22,10 @@ impl Test {
     pub fn get_id(&self) -> String {
         self.id.clone()
     }
+    
+    pub fn set_id(&mut self, id: String) {
+        self.id = id;
+    }
 }
 
 impl Display for Test {

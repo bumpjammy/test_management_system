@@ -45,6 +45,10 @@ impl DataPoint {
     pub fn get_comment(&self) -> Option<String> {
         self.comment.clone()
     }
+    
+    pub fn set_comment(&mut self, comment: Option<String>) {
+        self.comment = comment;
+    }
 }
 
 impl Display for DataPoint {

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Test List</title>
+    <title>Test DataPoints</title>
     <link rel="stylesheet" href="stylesheet.css">
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
 
@@ -15,19 +15,28 @@
     </style>
 </head>
 <body style="margin: 0; padding: 0; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center;">
+
 <!-- Container for centering header and content -->
 <div style="width: 50vw; display: flex; flex-direction: column; align-items: center;">
+
     <!-- Header Section -->
-    <header style="display: flex; justify-content: space-between; width: 100%; padding-top: 15vh; box-sizing: border-box;">
-        <h1 id="header-title" style="margin: 0;">Test Datapoints</h1>
+    <header style="display: flex; align-items: center; width: 100%; padding-top: 15vh; box-sizing: border-box;">
+        <h1 id="header-title" style="margin: 0; margin-right: 10px;">Test DataPoints</h1>
+        <button id="edit-test-button" style="padding: 8px 12px; background-color: #28a745; border: none; border-radius: 4px; color: white; cursor: pointer;">Edit Test</button>
     </header>
 
     <!-- Content Section -->
-    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+    <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
         <div id="data-table" style="width: 100%;" hx-get="" hx-trigger="load" hx-swap="innerHTML">
             Loading test data...
         </div>
+
+        <!-- Add DataPoint Button at the Bottom -->
+        <div style="display: flex; justify-content: left; align-items: flex-start; width: 100%;">
+            <button id="add-datapoint-button" style="padding: 10px; background-color: #007bff; border: none; border-radius: 4px; color: white; cursor: pointer;">Add DataPoint</button>
+        </div>
     </div>
+
 </div>
 
 <script>
@@ -50,10 +59,22 @@
     if (serverId && testId) {
         document.getElementById('data-table').setAttribute('hx-get', `/api/get_test_data/${serverId}/${testId}`);
         // Update the h1 tag text
-        document.getElementById('header-title').innerText = `Test Datapoints (${testId} on ${serverId})`;
+        document.getElementById('header-title').innerText = `Test DataPoints (${testId} on ${serverId})`;
+
+        // Edit Test button event
+        document.getElementById('edit-test-button').addEventListener('click', function() {
+            window.location.href = `/manage-test?server_id=${serverId}&test_id=${testId}`;
+        });
+
+        // Add DataPoint button event
+        document.getElementById('add-datapoint-button').addEventListener('click', function() {
+            window.location.href = `/create-datapoint?server_id=${serverId}&test_id=${testId}`;
+        });
+
     } else {
         document.getElementById('data-table').innerHTML = 'Server ID or Test ID is missing from URL query parameters.';
     }
+
 </script>
 </body>
 </html>

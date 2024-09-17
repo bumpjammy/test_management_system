@@ -1,11 +1,13 @@
+use std::char::from_digit;
 use std::str::FromStr;
 use std::sync::Arc;
 use rocket::{delete, get, post, FromForm, State};
 use rocket::form::Form;
 use rocket::http::Status;
 use rocket::response::content::RawHtml;
+use rocket::tokio::fs::{create_dir_all, rename};
 use rocket::tokio::sync::Mutex;
-use crate::models::{Position, Server, SiteData, Test, User};
+use crate::models::{DataPoint, Position, Server, SiteData, Test, User};
 
 #[get("/get_users")]
 pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
@@ -21,7 +23,7 @@ pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<Strin
 
         // Start the clickable row with an anchor tag
         output.push_str(&format!(
-            "<tr onclick=\"window.location.href='/manage_user?username={}'\" style=\"cursor:pointer\">",
+            "<tr onclick=\"window.location.href='/manage-user?username={}'\" style=\"cursor:pointer\">",
             username
         ));
 
@@ -198,7 +200,7 @@ pub async fn get_test_data(
     server_id: String,
     test_id: String
 ) -> RawHtml<String> {
-    let test = match get_test(site_data.inner(), server_id, test_id).await {
+    let test = match get_test(site_data.inner(), server_id.clone(), test_id.clone()).await {
         Some(test) => test,
         None => return RawHtml("Could not find test!".to_string())
     };
@@ -217,9 +219,15 @@ pub async fn get_test_data(
     // Iterate through the test data points and add rows to the table
     for i in 0..test.data.length {
         if let Some(data_point) = test.data.get(i).await {
-            output.push_str("<tr>");
+            let time = data_point.get_time();
+            let url = format!("/manage-datapoint?server_id={}&test_id={}&time={}", server_id, test_id, time);
 
-            output.push_str(&format!("<td>{}</td>", data_point.get_time()));
+            output.push_str(&format!(
+                "<tr onclick=\"window.location.href='{}'\" style=\"cursor:pointer\">",
+                url
+            ));
+
+            output.push_str(&format!("<td>{}</td>", time));
             output.push_str(&format!("<td>{}</td>", data_point.get_ram()));
             output.push_str(&format!("<td>{}</td>", data_point.get_cpu()));
             output.push_str(&format!("<td>{}</td>", data_point.get_comment().unwrap_or_default()));
@@ -233,7 +241,6 @@ pub async fn get_test_data(
 
     RawHtml(output)
 }
-
 
 pub async fn get_test(site_data: &Arc<Mutex<SiteData>>, server_id: String, test_id: String) -> Option<Test> {
     let site_data = site_data.lock().await;
@@ -255,6 +262,32 @@ pub async fn get_test(site_data: &Arc<Mutex<SiteData>>, server_id: String, test_
     };
 
     Some(tests.get(test_index).await.expect("Test was found but was not in array!"))
+}
+
+#[get("/get_datapoint_info/<server_id>/<test_id>/<time>")]
+pub async fn get_datapoint_info(site_data: &State<Arc<Mutex<SiteData>>>, server_id: String, test_id: String, time: String) -> String {
+    let test = match get_test(site_data, server_id, test_id).await {
+        Some(test) => test,
+        None => return "Unable to find test".to_string(),
+    };
+
+    let datapoint_index = match test.data.search(|a| a.get_time() == time).await {
+        Some(datapoint_index) => datapoint_index,
+        None => return "Unable to find datapoint".to_string(),
+    };
+    let datapoint = test.data.get(datapoint_index).await.unwrap();
+
+    let mut output = String::new();
+
+    output.push_str(datapoint.get_time().as_str());
+    output.push_str(",");
+    output.push_str(datapoint.get_ram().to_string().as_str());
+    output.push_str(",");
+    output.push_str(datapoint.get_cpu().to_string().as_str());
+    output.push_str(",");
+    output.push_str(datapoint.get_comment().unwrap_or_default().as_str());
+
+    output
 }
 
 #[derive(FromForm)]
@@ -442,5 +475,217 @@ pub async fn update_user(
 
     // Save updated user data to a file
     site_data.users.save_to_file("./data/users").await.expect("Failed to save users!");
+    Status::Ok
+}
+
+// For updating and creating tests
+#[derive(FromForm)]
+struct UpdateTestData {
+    server_id: String,
+    old_test_id: String,
+    test_id: String,
+}
+
+#[derive(FromForm)]
+struct CreateTestData {
+    server_id: String,
+    test_id: String,
+}
+
+// For updating and creating DataPoints
+#[derive(FromForm)]
+struct UpdateDataPointData {
+    server_id: String,
+    test_id: String,
+    old_time: String,
+    time: String,
+    cpu: String,
+    ram: String,
+    comment: String,
+}
+
+#[derive(FromForm)]
+struct CreateDataPointData {
+    server_id: String,
+    test_id: String,
+    time: String,
+    ram: String,
+    cpu: String,
+    comment: String,
+}
+
+// Get Test Info
+#[get("/get_test_info/<server_id>/<test_id>")]
+pub async fn get_test_info(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    server_id: String,
+    test_id: String
+) -> String {
+    let test = match get_test(site_data.inner(), server_id, test_id).await {
+        Some(test) => test,
+        None => return "Test Not Found".to_string(),
+    };
+
+    let mut output = String::new();
+    output.push_str(test.get_id().as_str());
+    output
+}
+
+// Update Test
+#[post("/update_test", data = "<form_data>")]
+pub async fn update_test(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<UpdateTestData>
+) -> Status {
+    let mut test = match get_test(site_data, form_data.server_id.clone(), form_data.old_test_id.clone()).await {
+        Some(test) => test,
+        None => return Status::NotFound,
+    };
+
+    // Update the test ID
+    let old_test_id = test.get_id().clone();
+    let new_test_id = form_data.test_id.clone();
+    test.set_id(new_test_id.clone());
+
+    let old_path = format!("./data/tests/{}/{}", form_data.server_id.clone(), old_test_id);
+    let new_path = format!("./data/tests/{}/{}", form_data.server_id.clone(), new_test_id);
+
+    if let Err(e) = rename(&old_path, &new_path).await {
+        eprintln!("Failed to rename test directory: {}", e);
+        return Status::InternalServerError;
+    }
+
+    let site_data = site_data.lock().await;
+    let server_index = site_data.servers.search(|a| a.get_id() == form_data.server_id.clone()).await.unwrap();
+    let server = site_data.servers.get_mut(server_index).await.unwrap();
+    server.load_tests().await;
+
+    Status::Ok
+}
+
+
+// Create Test
+#[post("/create_test", data = "<form_data>")]
+pub async fn create_test(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<CreateTestData>
+) -> Status {
+    let test = Test::new(form_data.test_id.clone());
+    let server_tests_file = format!("./data/tests/{}/{}", form_data.server_id, form_data.test_id);
+    test.data.save_to_file(server_tests_file.as_str()).await.expect("Failed to save test!");
+
+    let site_data = site_data.lock().await;
+    let server_index = site_data.servers.search(|a| a.get_id() == form_data.server_id.clone()).await.unwrap();
+    let server = site_data.servers.get_mut(server_index).await.unwrap();
+    server.load_tests().await;
+    
+    Status::Ok
+}
+
+// Delete Test
+#[delete("/delete_test?<server_id>&<test_id>")]
+pub async fn delete_test(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    server_id: String,
+    test_id: String
+) -> Status {
+    let site_data = site_data.lock().await;
+
+    // Find the server
+    let server_index = match site_data.servers.search(|a| a.get_id() == server_id).await {
+        Some(index) => index,
+        None => return Status::NotFound,
+    };
+    let mut server = site_data.servers.get_mut(server_index).await.unwrap();
+    server.load_tests().await;
+
+    // Find and remove the test
+    let test_index = match server.tests.search(|a| a.get_id() == test_id).await {
+        Some(index) => index,
+        None => return Status::NotFound,
+    };
+    server.tests.remove(test_index).await;
+
+    // Save the test data to a file
+    server.tests.save_to_file(&format!("./data/servers/{}/tests", server.get_id())).await.expect("Failed to save tests!");
+    Status::Ok
+}
+
+// Update DataPoint
+#[post("/update_datapoint", data = "<form_data>")]
+pub async fn update_datapoint(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<UpdateDataPointData>
+) -> Status {
+    let test = match get_test(site_data.inner(), form_data.server_id.clone(), form_data.test_id.clone()).await {
+        Some(test) => test,
+        None => return Status::NotFound,
+    };
+
+    let datapoint_index = match test.data.search(|a| a.get_time() == form_data.old_time).await {
+        Some(index) => index,
+        None => return Status::NotFound,
+    };
+    let datapoint = test.data.get_mut(datapoint_index).await.unwrap();
+
+    // Update the data point
+    datapoint.set_time(form_data.time.clone());
+    datapoint.set_cpu(form_data.cpu.parse::<u32>().unwrap_or(0));
+    datapoint.set_ram(form_data.ram.parse::<u32>().unwrap_or(0));
+    datapoint.set_comment(if form_data.comment.is_empty() { None } else { Some(form_data.comment.clone()) });
+
+    // Save the data point data to a file
+    test.data.save_to_file(&format!("./data/tests/{}/{}", form_data.server_id, form_data.test_id)).await.expect("Failed to save data points!");
+    Status::Ok
+}
+
+// Create DataPoint
+#[post("/create_datapoint", data = "<form_data>")]
+pub async fn create_datapoint(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<CreateDataPointData>
+) -> Status {
+    let mut test = match get_test(site_data.inner(), form_data.server_id.clone(), form_data.test_id.clone()).await {
+        Some(test) => test,
+        None => return Status::NotFound,
+    };
+
+    // Create a new data point
+    let datapoint = DataPoint::new(
+        form_data.time.clone(),
+        form_data.ram.parse::<u32>().unwrap_or(0),
+        form_data.cpu.parse::<u32>().unwrap_or(0),
+    );
+
+    test.data.push(datapoint).await;
+
+    // Save the data point data to a file
+    test.data.save_to_file(&format!("./data/tests/{}/{}", form_data.server_id, form_data.test_id)).await.expect("Failed to save data points!");
+    Status::Ok
+}
+
+// Delete DataPoint
+#[delete("/delete_datapoint?<server_id>&<test_id>&<time>")]
+pub async fn delete_datapoint(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    server_id: String,
+    test_id: String,
+    time: String,
+) -> Status {
+    let mut test = match get_test(site_data.inner(), server_id.clone(), test_id.clone()).await {
+        Some(test) => test,
+        None => return Status::NotFound,
+    };
+
+    let datapoint_index = match test.data.search(|a| a.get_time() == time).await {
+        Some(index) => index,
+        None => return Status::NotFound,
+    };
+
+    // Remove the data point
+    test.data.remove(datapoint_index).await;
+
+    // Save the data point data to a file
+    test.data.save_to_file(&format!("./data/tests/{}/{}", server_id, test_id)).await.expect("Failed to save data points!");
     Status::Ok
 }

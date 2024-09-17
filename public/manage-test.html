@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Form</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="https://unpkg.com/htmx.org@2.0.2"></script>
+    <style>
+        tr:hover td {
+            cursor: pointer;
+            background-color: #3A4046;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center;">
+<!-- Container for centering header and form -->
+<div style="width: 50vw; display: flex; flex-direction: column; align-items: center;">
+
+    <!-- Header Section -->
+    <header style="display: flex; justify-content: space-between; width: 100%; padding-top: 15vh; box-sizing: border-box;">
+        <h1 id="header-title" style="margin: 0;">Update Test</h1>
+    </header>
+
+    <!-- Form Section -->
+    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+        <form id="test-form" style="width: 100%;"
+              hx-post="/api/update_test"
+              hx-trigger="submit"
+              hx-swap="innerHTML">
+            <input type="hidden" id="server_id" name="server_id">
+            <input type="hidden" id="old_test_id" name="old_test_id">
+            <div style="margin-bottom: 10px;">
+                <label for="test_id">Test ID:</label>
+                <input type="text" id="test_id" name="test_id" required>
+            </div>
+            <button type="submit" style="padding: 10px; background-color: #007bff; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Save</button>
+            <button type="button" id="delete-button" style="padding: 10px; background-color: #ff7b00; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Delete</button>
+        </form>
+    </div>
+
+</div>
+
+<script>
+    // Function to get URL query parameters
+    function getQueryParams() {
+        const params = {};
+        window.location.search.substring(1).split('&').forEach(function(part) {
+            const item = part.split('=');
+            params[item[0]] = decodeURIComponent(item[1]);
+        });
+        return params;
+    }
+
+    // Get the server_id and test_id from URL query parameters
+    const params = getQueryParams();
+    const serverId = params['server_id'];
+    const testId = params['test_id'];
+
+    // Function to fetch test info and populate the form
+    function populateForm(serverId, testId) {
+        fetch(`/api/get_test_info/${serverId}/${testId}`)
+            .then(response => response.text())
+            .then(data => {
+                const [test_id] = data.split(',');
+                document.getElementById('server_id').value = serverId;
+                document.getElementById('old_test_id').value = test_id;
+                document.getElementById('test_id').value = test_id;
+            })
+            .catch(error => {
+                console.error('Error fetching test info:', error);
+                alert('Error fetching test information.');
+            });
+    }
+
+    // Set up the form and delete button
+    if (serverId && testId) {
+        populateForm(serverId, testId);
+        document.getElementById('header-title').innerText = `Test Form (ID: ${testId})`;
+
+        document.getElementById('delete-button').addEventListener('click', function() {
+            if (confirm(`Are you sure you want to delete test with ID: ${testId}?`)) {
+                fetch(`/api/delete_test?server_id=${serverId}&test_id=${testId}`, {
+                    method: 'DELETE'
+                }).then(response => {
+                    if (response.status === 200) {
+                        alert('Test deleted successfully.');
+                        window.location.href = `/test-list?server_id=${serverId}`; // Redirect to test list page
+                    } else {
+                        alert('An error occurred while deleting the test. Please try again.');
+                    }
+                }).catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while deleting the test.');
+                });
+            }
+        });
+    } else {
+        alert('Server ID or Test ID is missing from URL query parameters.');
+    }
+
+    // Handle form submission redirection
+    document.getElementById('test-form').addEventListener('htmx:afterRequest', function(event) {
+        window.location.href = `/test-list?server_id=${serverId}`;
+    });
+</script>
+</body>
+</html>

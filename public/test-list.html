@@ -15,19 +15,27 @@
     </style>
 </head>
 <body style="margin: 0; padding: 0; height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center;">
+
 <!-- Container for centering header and content -->
 <div style="width: 50vw; display: flex; flex-direction: column; align-items: center;">
+
     <!-- Header Section -->
-    <header style="display: flex; justify-content: space-between; width: 100%; padding-top: 15vh; box-sizing: border-box;">
+    <header style="display: flex; justify-content: space-between; align-items: center; width: 100%; padding-top: 15vh; box-sizing: border-box;">
         <h1 id="header-title" style="margin: 0;">Test List</h1>
     </header>
 
     <!-- Content Section -->
-    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+    <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
         <div id="test-table" style="width: 100%;" hx-get="" hx-trigger="load" hx-swap="innerHTML">
             Loading test data...
         </div>
+
+        <!-- Add Test Button at the Bottom -->
+        <div style="display: flex; justify-content: left; align-items: flex-start; width: 100%;">
+            <button id="add-test-button" style="padding: 10px; background-color: #007bff; border: none; border-radius: 4px; color: white; cursor: pointer;">Add Test</button>
+        </div>
     </div>
+
 </div>
 
 <script>
@@ -50,6 +58,11 @@
         document.getElementById('test-table').setAttribute('hx-get', `/api/get_tests/${serverId}`);
         // Update the h1 tag text
         document.getElementById('header-title').innerText = `Test List (${serverId})`;
+
+        // Add Test button event
+        document.getElementById('add-test-button').addEventListener('click', function() {
+            window.location.href = `/create-test?server_id=${serverId}`;
+        });
     } else {
         document.getElementById('test-table').innerHTML = 'Server ID is missing from URL query parameters.';
     }
