@@ -28,10 +28,10 @@
               hx-trigger="submit"
               hx-swap="innerHTML">
             <input type="hidden" id="server_id" name="server_id">
-            <input type="hidden" id="old_test_id" name="old_test_id">
+            <input type="hidden" id="old_id" name="old_id">
             <div style="margin-bottom: 10px;">
-                <label for="test_id">Test ID:</label>
-                <input type="text" id="test_id" name="test_id" required>
+                <label for="id">Test ID:</label>
+                <input type="text" id="id" name="id" required>
             </div>
             <button type="submit" style="padding: 10px; background-color: #007bff; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Save</button>
             <button type="button" id="delete-button" style="padding: 10px; background-color: #ff7b00; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Delete</button>
@@ -63,8 +63,8 @@
             .then(data => {
                 const [test_id] = data.split(',');
                 document.getElementById('server_id').value = serverId;
-                document.getElementById('old_test_id').value = test_id;
-                document.getElementById('test_id').value = test_id;
+                document.getElementById('old_id').value = test_id;
+                document.getElementById('id').value = test_id;
             })
             .catch(error => {
                 console.error('Error fetching test info:', error);
