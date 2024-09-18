@@ -538,20 +538,6 @@ pub async fn update_user(
     Status::Ok
 }
 
-// For updating and creating tests
-#[derive(FromForm)]
-struct UpdateTestData {
-    server_id: String,
-    old_test_id: String,
-    test_id: String,
-}
-
-#[derive(FromForm)]
-struct CreateTestData {
-    server_id: String,
-    test_id: String,
-}
-
 // For updating and creating DataPoints
 #[derive(FromForm)]
 struct UpdateDataPointData {
@@ -590,58 +576,6 @@ pub async fn get_test_info(
     output.push_str(test.get_id().as_str());
     output
 }
-
-// Update Test
-#[post("/update_test", data = "<form_data>")]
-pub async fn update_test(
-    site_data: &State<Arc<Mutex<SiteData>>>,
-    form_data: Form<UpdateTestData>
-) -> Status {
-    let mut test = match get_test(site_data, form_data.server_id.clone(), form_data.old_test_id.clone()).await {
-        Some(test) => test,
-        None => return Status::NotFound,
-    };
-
-    // Update the test ID
-    let old_test_id = test.get_id().clone();
-    let new_test_id = form_data.test_id.clone();
-    test.set_id(new_test_id.clone());
-
-    let old_path = format!("./data/tests/{}/{}", form_data.server_id.clone(), old_test_id);
-    let new_path = format!("./data/tests/{}/{}", form_data.server_id.clone(), new_test_id);
-
-    if let Err(e) = rename(&old_path, &new_path).await {
-        eprintln!("Failed to rename test directory: {}", e);
-        return Status::InternalServerError;
-    }
-
-    let site_data = site_data.lock().await;
-    let server_index = site_data.servers.search(|a| a.get_id() == form_data.server_id.clone()).await.unwrap();
-    let server = site_data.servers.get_mut(server_index).await.unwrap();
-    server.load_tests().await;
-
-    Status::Ok
-}
-
-
-// Create Test
-#[post("/create_test", data = "<form_data>")]
-pub async fn create_test(
-    site_data: &State<Arc<Mutex<SiteData>>>,
-    form_data: Form<CreateTestData>
-) -> Status {
-    let test = Test::new(form_data.test_id.clone());
-    let server_tests_file = format!("./data/tests/{}/{}", form_data.server_id, form_data.test_id);
-    test.data.save_to_file(server_tests_file.as_str()).await.expect("Failed to save test!");
-
-    let site_data = site_data.lock().await;
-    let server_index = site_data.servers.search(|a| a.get_id() == form_data.server_id.clone()).await.unwrap();
-    let server = site_data.servers.get_mut(server_index).await.unwrap();
-    server.load_tests().await;
-    
-    Status::Ok
-}
-
 // Delete Test
 #[delete("/delete_test?<server_id>&<test_id>")]
 pub async fn delete_test(
