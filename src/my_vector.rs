@@ -437,6 +437,21 @@ where
 
         vec
     }
+
+    pub async fn search_all<F>(&self, predicate: F) -> MyVector<T>
+    where
+        F: Fn(&T) -> bool,
+    {
+        let mut result = MyVector::new_with_capacity(10); // Adjust capacity as needed
+        for i in 0..self.length {
+            if let Some(value) = self.get(i).await {
+                if predicate(&value) {
+                    result.push(value.clone()).await;
+                }
+            }
+        }
+        result
+    }
 }
 
 #[cfg(test)]

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Server List</title>
+    <title>Schedule List</title>
     <link rel="stylesheet" href="stylesheet.css">
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
 
@@ -19,25 +19,24 @@
 
     <!-- Header Section -->
     <header style="display: flex; justify-content: space-between; width: 100%; padding-top: 15vh; box-sizing: border-box;">
-        <h1 style="margin: 0;">Manage Servers</h1>
+        <h1 style="margin: 0;">Manage Schedule Entries</h1>
     </header>
 
     <!-- Search Bar -->
     <div style="width: 100%; margin-top: 20px; box-sizing: border-box;">
-        <input type="text" id="search-input" name="search" placeholder="Search by ID"
-               style="width: 100%; padding: 10px; box-sizing: border-box;"
-               hx-get="/api/get_servers_manager" hx-trigger="keyup changed delay:50ms" hx-target="#server-table" hx-swap="innerHTML">
+        <input type="text" id="search-input" name="search" placeholder="Search by ID" style="width: 100%; padding: 10px; box-sizing: border-box;"
+               hx-get="/api/get_schedule_entries" hx-trigger="keyup changed delay:50ms" hx-target="#schedule-table" hx-swap="innerHTML">
     </div>
 
     <!-- Content Section -->
-    <div id="server-table" hx-get="/api/get_servers_manager" hx-trigger="load" hx-swap="innerHTML"
-         style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
-        Loading server data...
+    <div id="schedule-table" hx-get="/api/get_schedule_entries" hx-trigger="load" hx-swap="innerHTML" style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+        <!-- The table will be loaded here -->
+        Loading schedule data...
     </div>
 
     <div style="display: flex; justify-content: left; align-items: flex-start; width: 100%;">
-        <a href="/create-server" style="border-bottom: none">
-            <button style="padding: 10px; background-color: #007bff; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Add Server</button>
+        <a href="/create-scheduleentry" style="border-bottom: none">
+            <button style="padding: 10px; background-color: #007bff; border: none; margin-left: 5px; border-radius: 4px; color: white; cursor: pointer;">Add Schedule Entry</button>
         </a>
     </div>
 

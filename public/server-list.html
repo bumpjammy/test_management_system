@@ -7,8 +7,8 @@
     <script src="https://unpkg.com/htmx.org@2.0.2"></script>
 
     <style>
-        tr:hover td{
-            cursor:pointer;
+        tr:hover td {
+            cursor: pointer;
             background-color: #3A4046;
         }
     </style>
@@ -22,11 +22,17 @@
         <h1 style="margin: 0;">Server List</h1>
     </header>
 
+    <!-- Search Bar -->
+    <div style="width: 100%; margin-top: 20px; box-sizing: border-box;">
+        <input type="text" id="search-input" name="search" placeholder="Search by ID"
+               style="width: 100%; padding: 10px; box-sizing: border-box;"
+               hx-get="/api/get_servers" hx-trigger="keyup changed delay:50ms" hx-target="#server-table" hx-swap="innerHTML">
+    </div>
+
     <!-- Content Section -->
-    <div style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
-        <div style="width: 100%;" hx-get="/api/get_servers" hx-trigger="load" hx-swap="innerHTML">
-            Loading server data...
-        </div>
+    <div id="server-table" hx-get="/api/get_servers" hx-trigger="load" hx-swap="innerHTML"
+         style="flex: 1; display: flex; justify-content: center; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
+        Loading server data...
     </div>
 
 </div>

@@ -25,6 +25,13 @@
         <button id="edit-test-button" style="padding: 8px 12px; background-color: #28a745; border: none; border-radius: 4px; color: white; cursor: pointer;">Edit Test</button>
     </header>
 
+    <!-- Search Bar -->
+    <div style="width: 100%; margin-top: 20px; box-sizing: border-box;">
+        <input type="text" id="search-input" name="search" placeholder="Search by Time"
+               style="width: 100%; padding: 10px; box-sizing: border-box;"
+               hx-get="" hx-trigger="keyup changed delay:50ms" hx-target="#data-table" hx-swap="innerHTML">
+    </div>
+
     <!-- Content Section -->
     <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-start; width: 100%; margin-top: 20px; box-sizing: border-box;">
         <div id="data-table" style="width: 100%;" hx-get="" hx-trigger="load" hx-swap="innerHTML">
@@ -43,7 +50,7 @@
     // Function to get URL query parameters
     function getQueryParams() {
         const params = {};
-        window.location.search.substring(1).split('&').forEach(function(part) {
+        window.location.search.substring(1).split('&').forEach(function (part) {
             const item = part.split('=');
             params[item[0]] = decodeURIComponent(item[1]);
         });
@@ -57,24 +64,29 @@
 
     // Update the hx-get attribute with the server_id and test_id
     if (serverId && testId) {
-        document.getElementById('data-table').setAttribute('hx-get', `/api/get_test_data/${serverId}/${testId}`);
+        const dataTable = document.getElementById('data-table');
+        const searchInput = document.getElementById('search-input');
+
+        // Update hx-get attributes
+        dataTable.setAttribute('hx-get', `/api/get_test_data/${serverId}/${testId}`);
+        searchInput.setAttribute('hx-get', `/api/get_test_data/${serverId}/${testId}`);
+
         // Update the h1 tag text
         document.getElementById('header-title').innerText = `Test DataPoints (${testId} on ${serverId})`;
 
         // Edit Test button event
-        document.getElementById('edit-test-button').addEventListener('click', function() {
+        document.getElementById('edit-test-button').addEventListener('click', function () {
             window.location.href = `/manage-test?server_id=${serverId}&test_id=${testId}`;
         });
 
         // Add DataPoint button event
-        document.getElementById('add-datapoint-button').addEventListener('click', function() {
+        document.getElementById('add-datapoint-button').addEventListener('click', function () {
             window.location.href = `/create-datapoint?server_id=${serverId}&test_id=${testId}`;
         });
 
     } else {
         document.getElementById('data-table').innerHTML = 'Server ID or Test ID is missing from URL query parameters.';
     }
-
 </script>
 </body>
 </html>

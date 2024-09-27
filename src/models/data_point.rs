@@ -29,23 +29,23 @@ impl DataPoint {
     pub fn set_cpu(&mut self, cpu: u32) {
         self.cpu = cpu
     }
-    
+
     pub fn get_time(&self) -> String {
         self.time.clone()
     }
-    
+
     pub fn get_ram(&self) -> u32 {
         self.ram
     }
-    
+
     pub fn get_cpu(&self) -> u32 {
         self.cpu
     }
-    
+
     pub fn get_comment(&self) -> Option<String> {
         self.comment.clone()
     }
-    
+
     pub fn set_comment(&mut self, comment: Option<String>) {
         self.comment = comment;
     }

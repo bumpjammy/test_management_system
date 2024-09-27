@@ -7,27 +7,36 @@ use rocket::http::Status;
 use rocket::response::content::RawHtml;
 use rocket::tokio::fs::{create_dir_all, rename};
 use rocket::tokio::sync::Mutex;
-use crate::models::{DataPoint, Position, Server, SiteData, Test, User};
+use crate::models::{DataPoint, Position, ScheduleEntry, Server, SiteData, Test, User};
 
-#[get("/get_users")]
-pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
+#[get("/get_users?<search>")]
+pub async fn get_users(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    search: Option<String>,
+) -> RawHtml<String> {
     let site_data = site_data.lock().await;
-
     let mut output = String::new();
     output.push_str("<table>");
     output.push_str("<tr><th>Username</th><th>Forename</th><th>Surname</th><th>Position</th></tr>\n");
 
-    for i in 0..site_data.users.length {
-        let user = site_data.users.get(i).await.unwrap();
+    let users = if let Some(ref search_term) = search {
+        site_data
+            .users
+            .search_all(|user| user.get_username().contains(search_term))
+            .await
+    } else {
+        site_data.users.clone()
+    };
+
+    for i in 0..users.length {
+        let user = users.get(i).await.unwrap();
         let username = user.get_username();
 
-        // Start the clickable row with an anchor tag
         output.push_str(&format!(
             "<tr onclick=\"window.location.href='/manage-user?username={}'\" style=\"cursor:pointer\">",
             username
         ));
 
-        // Add user data to the row
         output.push_str(&format!(
             "<td>{}</td><td>{}</td><td>{}</td><td>{}</td>",
             username,
@@ -36,7 +45,6 @@ pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<Strin
             user.get_position()
         ));
 
-        // Close the row
         output.push_str("</tr>\n");
     }
     output.push_str("</table>");
@@ -44,22 +52,30 @@ pub async fn get_users(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<Strin
     RawHtml(output)
 }
 
-#[get("/get_servers")]
-pub async fn get_servers(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
-    get_server_table(site_data, "/test-list").await
+#[get("/get_servers?<search>")]
+pub async fn get_servers(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    search: Option<String>,
+) -> RawHtml<String> {
+    get_server_table(site_data, "/test-list", search).await
 }
 
-#[get("/get_servers_manager")]
-pub async fn get_servers_manager(site_data: &State<Arc<Mutex<SiteData>>>) -> RawHtml<String> {
-    get_server_table(site_data, "/manage-server").await
+#[get("/get_servers_manager?<search>")]
+pub async fn get_servers_manager(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    search: Option<String>,
+) -> RawHtml<String> {
+    get_server_table(site_data, "/manage-server", search).await
 }
 
-async fn get_server_table(site_data: &State<Arc<Mutex<SiteData>>>, url_prefix: &str) -> RawHtml<String> {
+async fn get_server_table(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    url_prefix: &str,
+    search: Option<String>,
+) -> RawHtml<String> {
     let site_data = site_data.lock().await;
-    let servers = &site_data.servers;
     let mut output = String::new();
 
-    // Start the HTML table
     output.push_str("<table>");
     output.push_str("<tr>");
     output.push_str("<th>ID</th>");
@@ -70,20 +86,26 @@ async fn get_server_table(site_data: &State<Arc<Mutex<SiteData>>>, url_prefix: &
     output.push_str("<th>Number of Tests</th>");
     output.push_str("</tr>");
 
-    // Iterate through servers and add rows to the table
+    let servers = if let Some(ref search_term) = search {
+        site_data
+            .servers
+            .search_all(|server| server.get_id().contains(search_term))
+            .await
+    } else {
+        site_data.servers.clone()
+    };
+
     for i in 0..servers.length {
         let mut server = servers.get(i).await.unwrap();
         server.load_tests().await;
         let length = server.tests.length;
 
-        // Start the clickable row with an anchor tag
         output.push_str(&format!(
             "<tr onclick=\"window.location.href='{}?server_id={}'\" style=\"cursor:pointer\">",
             url_prefix,
             server.get_id(),
         ));
 
-        // Add server data to the row
         output.push_str(&format!("<td>{}</td>", server.get_id()));
         output.push_str(&format!("<td>{}</td>", server.get_name()));
         output.push_str(&format!("<td>{}</td>", server.get_created_by()));
@@ -91,11 +113,9 @@ async fn get_server_table(site_data: &State<Arc<Mutex<SiteData>>>, url_prefix: &
         output.push_str(&format!("<td>{}</td>", server.get_cpu()));
         output.push_str(&format!("<td>{}</td>", length));
 
-        // Close the row
         output.push_str("</tr>");
     }
 
-    // End the HTML table
     output.push_str("</table>");
 
     RawHtml(output)
@@ -149,21 +169,22 @@ pub async fn get_user_info(site_data: &State<Arc<Mutex<SiteData>>>, username: St
     output
 }
 
-#[get("/get_tests/<server_id>")]
-pub async fn get_tests(site_data: &State<Arc<Mutex<SiteData>>>, server_id: String) -> RawHtml<String> {
+#[get("/get_tests/<server_id>?<search>")]
+pub async fn get_tests(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    server_id: String,
+    search: Option<String>,
+) -> RawHtml<String> {
     let site_data = site_data.lock().await;
 
-    // Search for the server by server_id
     let server_index = match site_data.servers.search(|a| a.get_id() == server_id).await {
         Some(server) => server,
-        None => return RawHtml("Server not found!".to_string())
+        None => return RawHtml("Server not found!".to_string()),
     };
 
-    // Get the server object
     let mut server = site_data.servers.get(server_index).await.unwrap();
     server.load_tests().await;
 
-    // Start the HTML table
     let mut output = String::new();
     output.push_str("<table>");
     output.push_str("<tr>");
@@ -171,9 +192,17 @@ pub async fn get_tests(site_data: &State<Arc<Mutex<SiteData>>>, server_id: Strin
     output.push_str("<th>Num. of Data Points</th>");
     output.push_str("</tr>");
 
-    // Iterate through the tests and add rows to the table
-    for i in 0..server.tests.length {
-        let test = server.tests.get(i).await.unwrap();
+    let tests = if let Some(ref search_term) = search {
+        server
+            .tests
+            .search_all(|test| test.get_id().contains(search_term))
+            .await
+    } else {
+        server.tests.clone()
+    };
+
+    for i in 0..tests.length {
+        let test = tests.get(i).await.unwrap();
         let test_id = test.get_id();
         let num_data_points = test.data.length;
 
@@ -182,32 +211,31 @@ pub async fn get_tests(site_data: &State<Arc<Mutex<SiteData>>>, server_id: Strin
             "<tr onclick=\"window.location.href='{}'\" style=\"cursor:pointer\">",
             row_link
         ));
-        
+
         output.push_str(&format!("<td>{}</td>", test_id));
         output.push_str(&format!("<td>{}</td>", num_data_points));
         output.push_str("</tr>");
     }
 
-    // End the HTML table
     output.push_str("</table>");
 
     RawHtml(output)
 }
 
-#[get("/get_test_data/<server_id>/<test_id>")]
+#[get("/get_test_data/<server_id>/<test_id>?<search>")]
 pub async fn get_test_data(
     site_data: &State<Arc<Mutex<SiteData>>>,
     server_id: String,
-    test_id: String
+    test_id: String,
+    search: Option<String>,
 ) -> RawHtml<String> {
     let test = match get_test(site_data.inner(), server_id.clone(), test_id.clone()).await {
         Some(test) => test,
-        None => return RawHtml("Could not find test!".to_string())
+        None => return RawHtml("Could not find test!".to_string()),
     };
 
     let mut output = String::new();
 
-    // Start the HTML table with a border and add headers
     output.push_str("<table>");
     output.push_str("<tr>");
     output.push_str("<th>Time</th>");
@@ -216,11 +244,20 @@ pub async fn get_test_data(
     output.push_str("<th>Comment</th>");
     output.push_str("</tr>");
 
-    // Iterate through the test data points and add rows to the table
     for i in 0..test.data.length {
         if let Some(data_point) = test.data.get(i).await {
             let time = data_point.get_time();
-            let url = format!("/manage-datapoint?server_id={}&test_id={}&time={}", server_id, test_id, time);
+
+            if let Some(ref search_term) = search {
+                if !time.contains(search_term) {
+                    continue;
+                }
+            }
+
+            let url = format!(
+                "/manage-datapoint?server_id={}&test_id={}&time={}",
+                server_id, test_id, time
+            );
 
             output.push_str(&format!(
                 "<tr onclick=\"window.location.href='{}'\" style=\"cursor:pointer\">",
@@ -230,13 +267,15 @@ pub async fn get_test_data(
             output.push_str(&format!("<td>{}</td>", time));
             output.push_str(&format!("<td>{}</td>", data_point.get_ram()));
             output.push_str(&format!("<td>{}</td>", data_point.get_cpu()));
-            output.push_str(&format!("<td>{}</td>", data_point.get_comment().unwrap_or_default()));
+            output.push_str(&format!(
+                "<td>{}</td>",
+                data_point.get_comment().unwrap_or_default()
+            ));
 
             output.push_str("</tr>");
         }
     }
 
-    // Close the HTML table
     output.push_str("</table>");
 
     RawHtml(output)
@@ -681,5 +720,157 @@ pub async fn delete_datapoint(
 
     // Save the data point data to a file
     test.data.save_to_file(&format!("./data/tests/{}/{}", server_id, test_id)).await.expect("Failed to save data points!");
+    Status::Ok
+}
+
+/// Struct for creating a new ScheduleEntry
+#[derive(FromForm)]
+struct CreateScheduleEntryData {
+    id: String,
+    datetime: String,
+    assignees: String,
+    test: String,
+}
+
+/// Struct for updating an existing ScheduleEntry
+#[derive(FromForm)]
+struct UpdateScheduleEntryData {
+    old_id: String,
+    id: String,
+    datetime: String,
+    assignees: String,
+    test: String,
+}
+
+/// Get comma-separated schedule entry information
+#[get("/get_schedule_entry_info/<schedule_entry_id>")]
+pub async fn get_schedule_entry_info(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    schedule_entry_id: String
+) -> String {
+    let site_data = site_data.lock().await;
+    let schedule_index = match site_data.schedules.search(|s| s.get_id() == schedule_entry_id).await {
+        Some(index) => index,
+        None => return "Schedule Entry Not Found".to_string(),
+    };
+    let schedule = site_data.schedules.get(schedule_index).await.unwrap();
+    format!("{},{},{},{}",
+            schedule.get_id(),
+            schedule.get_datetime(),
+            schedule.get_assignees(),
+            schedule.get_test()
+    )
+}
+
+#[get("/get_schedule_entries?<search>")]
+pub async fn get_schedule_entries(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    search: Option<String>,
+) -> RawHtml<String> {
+    let site_data = site_data.lock().await;
+    let mut output = String::new();
+
+    output.push_str("<table>");
+    output.push_str("<tr><th>ID</th><th>DateTime</th><th>Assignees</th><th>Test</th></tr>\n");
+
+    let schedules = if let Some(ref search_term) = search {
+        site_data
+            .schedules
+            .search_all(|s| s.get_id().contains(search_term))
+            .await
+    } else {
+        site_data.schedules.clone()
+    };
+
+    for i in 0..schedules.length {
+        let schedule = schedules.get(i).await.unwrap();
+        let id = schedule.get_id();
+
+        output.push_str(&format!(
+            "<tr onclick=\"window.location.href='/manage-scheduleentry?id={}'\" style=\"cursor:pointer\">",
+            id
+        ));
+        output.push_str(&format!(
+            "<td>{}</td><td>{}</td><td>{}</td><td>{}</td>",
+            id,
+            schedule.get_datetime(),
+            schedule.get_assignees(),
+            schedule.get_test()
+        ));
+        output.push_str("</tr>\n");
+    }
+
+    output.push_str("</table>");
+    RawHtml(output)
+}
+
+/// Create a new schedule entry
+#[post("/create_schedule_entry", data = "<form_data>")]
+pub async fn create_schedule_entry(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<CreateScheduleEntryData>
+) -> Status {
+    let mut site_data = site_data.lock().await;
+
+    if site_data.schedules.search(|s| s.get_id() == form_data.id).await.is_some() {
+        return Status::Conflict;
+    }
+
+    let schedule = ScheduleEntry::new(
+        form_data.id.clone(),
+        form_data.datetime.clone().replace('T', " "),
+        form_data.assignees.clone(),
+        form_data.test.clone(),
+    );
+
+    site_data.schedules.push(schedule).await;
+    site_data.schedules.save_to_file("./data/schedules").await.expect("Failed to save schedules!");
+    Status::Ok
+}
+
+/// Update an existing schedule entry
+#[post("/update_schedule_entry", data = "<form_data>")]
+pub async fn update_schedule_entry(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    form_data: Form<UpdateScheduleEntryData>
+) -> Status {
+    let mut site_data = site_data.lock().await;
+
+    let schedule_index = match site_data.schedules.search(|s| s.get_id() == form_data.old_id).await {
+        Some(index) => index,
+        None => return Status::NotFound,
+    };
+
+    if form_data.old_id != form_data.id {
+        if site_data.schedules.search(|s| s.get_id() == form_data.id).await.is_some() {
+            return Status::Conflict;
+        }
+    }
+
+    let schedule = site_data.schedules.get_mut(schedule_index).await.unwrap();
+    schedule.set_id(form_data.id.clone());
+    schedule.set_datetime(form_data.datetime.clone().replace('T', " "));
+    schedule.set_assignees(form_data.assignees.clone());
+    schedule.set_test(form_data.test.clone());
+
+    site_data.schedules.save_to_file("./data/schedules").await.expect("Failed to save schedules!");
+    Status::Ok
+}
+
+/// Delete a schedule entry
+#[delete("/delete_schedule_entry?<schedule_entry_id>")]
+pub async fn delete_schedule_entry(
+    site_data: &State<Arc<Mutex<SiteData>>>,
+    schedule_entry_id: String
+) -> Status {
+    let mut site_data = site_data.lock().await;
+
+    let schedule_index = match site_data.schedules.search(|s| s.get_id() == schedule_entry_id).await {
+        Some(index) => index,
+        None => return Status::NotFound,
+    };
+
+    site_data.schedules.remove(schedule_index).await;
+    site_data.schedules.save_to_file("./data/schedules").await.expect("Failed to save schedules!");
     Status::Ok
 }

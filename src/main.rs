@@ -11,7 +11,7 @@ use rocket::fs::NamedFile;
 use rocket::http::Status;
 use rocket::response::Redirect;
 use rocket::yansi::Paint;
-use crate::api::{create_datapoint, create_server, create_test, create_user, delete_datapoint, delete_server, delete_test, delete_user, get_datapoint_info, get_server_info, get_servers, get_servers_manager, get_test_data, get_test_info, get_tests, get_user_info, get_users, update_datapoint, update_server, update_test, update_user};
+use crate::api::{create_datapoint, create_schedule_entry, create_server, create_test, create_user, delete_datapoint, delete_schedule_entry, delete_server, delete_test, delete_user, get_datapoint_info, get_schedule_entries, get_schedule_entry_info, get_server_info, get_servers, get_servers_manager, get_test_data, get_test_info, get_tests, get_user_info, get_users, update_datapoint, update_schedule_entry, update_server, update_test, update_user};
 use crate::models::SiteData;
 use crate::my_vector::MyVector;
 
@@ -28,9 +28,15 @@ async fn main() -> Result<(), rocket::Error> {
     server_list.quick_sort().await;
     server_list.save_to_file("./data/servers").await.expect("Cannot save servers!"); // Ensure servers are sorted on start
     
+    let mut schedule = MyVector::load_from_file("./data/schedules").await; // Load schedule
+    
+    schedule.quick_sort().await;
+    schedule.save_to_file("./data/schedules").await.expect("Cannot save schedule!"); // Ensure schedule is sorted on start
+    
     let site_data = Arc::new(Mutex::new(SiteData {
         users: user_list,
         servers: server_list,
+        schedules: schedule,
     }));
 
     let _ = rocket::build() // Create a new webserver
@@ -44,7 +50,9 @@ async fn main() -> Result<(), rocket::Error> {
             create_user, get_datapoint_info,
             update_test, create_test, delete_test,
             update_datapoint, create_datapoint, delete_datapoint,
-            get_test_info,
+            get_test_info, create_schedule_entry,
+            update_schedule_entry, delete_schedule_entry,
+            get_schedule_entries, get_schedule_entry_info,
         ]) // All API calls
         .mount("/", routes![index, login, catch_all]) // All public-facing pages
         .manage(site_data) // Share the site data with the web-server, so that data can be shown to the user

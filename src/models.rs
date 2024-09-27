@@ -11,6 +11,7 @@ use crate::my_vector::MyVector;
 pub struct SiteData { // Used to package all site data together for ease of use
     pub users: MyVector<User>,
     pub servers: MyVector<Server>,
+    pub schedules: MyVector<ScheduleEntry>,
 }
 
 #[derive(Clone)]
@@ -74,6 +75,6 @@ pub struct DataPoint {
 pub struct ScheduleEntry {
     id: String, // Primary Key
     datetime: String,
-    assignees: MyVector<String>,
-    test: Test,
+    assignees: String,
+    test: String,
 }
