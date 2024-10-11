@@ -8,5 +8,6 @@
 5) Once the codespace has loaded, run this command in the terminal at the bottom of your screen: `curl https://sh.rustup.rs -sSf | sh`<br>
 ![image](https://github.com/user-attachments/assets/74712372-8a8f-4ded-bea9-d2c1bf14fcc1)
 6) Press enter through all of the options until Rust has been installed
-7) Run the command `cargo run`
-8) A pop-up will appear in the bottom right, saying a port has been opened. Click open in browser. You should now be on the system. Continue in the microsoft form
+7) Run the command `. $HOME/.cargo/env`
+8) Run the command `cargo run`
+9) A pop-up will appear in the bottom right, saying a port has been opened. Click open in browser. You should now be on the system. Continue in the microsoft form
